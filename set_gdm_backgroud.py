@@ -1,11 +1,5 @@
 #!/usr/bin/env python2.6
 # -*- coding: utf-8 -*-
-# Setea el parámetro "forward / ..." en /etc/privoxy/config
-# Uso: si se llama con privoxy_fw <nombre de host> <puerto>, escribe una línea
-# forward / <nom_host>:<puerto> en /etc/priv../config;
-# si se llama sin parámetros suficientes (esto es, privoxy_fw [<algo>]) entonces
-# comenta cualquier línea forward /
-
 
 import sys
 import re
@@ -24,7 +18,9 @@ class HelloWorld:
    pixbuf = None
    imagen = gtk.Image()
    ruta = "/home/mauro/Imágenes/art/4995443800_e68125ac35_o.jpg"
+   conffile = "/home/mauro/git/greeter.gconf-defaults"
    layout = "zoom" #wallpaper, centered, scaled, stretched, zoom
+
    def dibujar_imagen(self):
       imagen_cargada = gtk.gdk.pixbuf_new_from_file(self.ruta)
       ancho_img = imagen_cargada.get_width()
@@ -77,9 +73,14 @@ class HelloWorld:
          y0 = (self.hscreen-alto_img)/8
          
          imagen_cargada.copy_area( max(-x0,0), max(-y0,0),
-                                   min(self.wscreen/4,ancho_img/4-x0),
-                                   min(self.hscreen/4,alto_img/4-y0),
+                                   min(self.wscreen/4,ancho_img/4),
+                                   min(self.hscreen/4,alto_img/4),
                                    self.pixbuf, max(x0,0), max(y0,0))
+         print "copy_area(" + str(max(-x0,0)) + "," + str(max(-y0,0)) + "," \
+         + str(min(self.wscreen/4,ancho_img/4)) + "," \
+         + str(min(self.hscreen/4,alto_img/4)) + ",self.pixbuf," \
+         + str(max(x0,0)) + "," + str(max(y0,0)) + ") " + str(x0) + " "\
+         + str(y0) + " " + str(ancho_img) + " " + str(alto_img)
       elif self.layout == "stretched":
          imagen_cargada = imagen_cargada.scale_simple(self.wscreen/4,
                                                       self.hscreen/4,
@@ -118,13 +119,7 @@ class HelloWorld:
       print "Hello World"
 
    def delete_event(self, widget, event, data=None):
-      # If you return FALSE in the "delete_event" signal handler,
-      # GTK will emit the "destroy" signal. Returning TRUE means
-      # you don't want the window to be destroyed.
-      # This is useful for popping up 'are you sure you want to quit?'
-      # type dialogs.
-      print "delete event occurred"
-
+      #print "delete event occurred"
       # Change FALSE to TRUE and the main window will not be destroyed
       # with a "delete_event".
       return False
@@ -142,8 +137,41 @@ class HelloWorld:
       self.layout = widget.get_active_text()
       self.dibujar_imagen()
 
+   def leer_conf( self ):
+      with open(self.conffile, 'r') as conf:
+         for linea in conf:
+            m1 = re.match(r"\s*/desktop/gnome/background/picture_filename\s+((?:\S*(?:(?<=\\)\s)*)+)", linea)
+            m2 = re.match(r"\s*/desktop/gnome/background/picture_options\s+(\w+)", linea)
+            if m1:
+                  print "imagen encontrada. " + m1.group(1)
+                  self.ruta = m1.group(1)
+            elif m2:
+               print "configuración encontrada: " + m2.group(1)
+               self.layout = m2.group(1)
+
+   def guardar_conf( self, widget ):
+      with open(self.conffile, 'r') as conf:
+         salida = ""
+         for linea in conf:
+            m1 = re.match(r"\s*/desktop/gnome/background/picture_filename\s+((?:\S*(?:(?<=\\)\s)*)+)", linea)
+            m2 = re.match(r"\s*/desktop/gnome/background/picture_options\s+(\w+)", linea)
+            if m1:
+               salida += "/desktop/gnome/background/picture_filename " + self.ruta + "\n"
+            elif m2:
+               salida += "/desktop/gnome/background/picture_options " + self.layout + "\n"
+            else:
+               salida += linea
+
+         with open(self.conffile, 'w') as f:
+            f.write(salida)
+            print "Se ha guardado la nueva configuración."
+
    def __init__(self):
+ 
       (self.wscreen, self.hscreen) = self.get_screen_size()
+
+      self.leer_conf()
+
       self.pixbuf = gtk.gdk.Pixbuf( gtk.gdk.COLORSPACE_RGB, True, 8,
                                     int(self.wscreen/4.0),
                                     int(self.hscreen/4.0) )
@@ -170,15 +198,8 @@ La imagen actualmente configurada es /home/mauro.")
       # Creates a new button with the label "Hello World".
       self.button = gtk.Button("Hello World")
     
-      # When the button receives the "clicked" signal, it will call the
-      # function hello() passing it None as its argument.  The hello()
-      # function is defined above.
-      self.button.connect("clicked", self.hello, None)
-      
-      # This will cause the window to be destroyed by calling
-      # gtk_widget_destroy(window) when "clicked".  Again, the destroy
-      # signal could come from here, or the window manager.
-      self.button.connect_object("clicked", gtk.Widget.destroy, self.window)
+      self.button.connect("clicked", self.guardar_conf)
+      #self.button.connect_object("clicked", gtk.Widget.destroy, self.window)
       
       self.vbox = gtk.VBox();
       self.hbox = gtk.HBox();
@@ -223,57 +244,11 @@ La imagen actualmente configurada es /home/mauro.")
       # and the window
       self.window.show()
 
-      print self.get_screen_size()
-
    def main(self):
       # All PyGTK applications must have a gtk.main(). Control ends here
       # and waits for an event to occur (like a key press or mouse event).
       gtk.main()
 
-# If the program is run directly or passed as an argument to the python
-# interpreter then create a HelloWorld instance and show it
 if __name__ == "__main__":
     hello = HelloWorld()
     hello.main()
-
-# if __name__ == "__main__":
-#     out = ""
-#     seteado = 0
-
-#     with open('/etc/privoxy/config', 'r') as conf:
-#         for linea in conf:
-#             # m matchea una línea forward / ...
-#             m = re.match(r"\s*#*\s*forward\s+/\s+([a-zA-z0-9._-]+):([0-9]+)(.*)", linea)
-#             if m:
-#                 if len(sys.argv) < 3:
-#                     out += "# forward / " + m.group(1) + ":" + m.group(2) + " " + m.group(3) + "\n"
-#                 elif m.group(1) == sys.argv[1] and m.group(2) == sys.argv[2]:
-#                     out += "forward / " + m.group(1) + ":" + m.group(2) + " " + m.group(3) + "\n"
-#                     seteado = 1
-#                 else:
-#                     out += "# forward / " + m.group(1) + ":" + m.group(2) + " " + m.group(3) + "\n"
-#             else:
-#                 out += linea
-                    
-#     if seteado == 0 and len(sys.argv) > 2:
-#         out = "forward / " + sys.argv[1] + ":" + sys.argv[2] + "\n" + out
-#     #print out
-
-#     with open('/etc/privoxy/config', 'w') as f:
-#         f.write(out)
-#         print "\nSe ha modificado la configuración de Privoxy."
-
-#     proxy_handler = urllib2.ProxyHandler({'http': 'http://localhost:8118/'})
-#     opener = urllib2.build_opener(proxy_handler)
-#     try:
-#         opener.open('http://www.google.com')
-#     except urllib2.HTTPError:
-#         pass
-
-#     try:
-#         opener.open('http://www.google.com')
-#     except urllib2.HTTPError:
-#         print 'No se puede forwardear al proxy seteado. Verificá los parámetros.'
-#     else:
-#         print 'Bien. Ahora podés navegar a través de Privoxy.'
-
