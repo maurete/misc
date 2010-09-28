@@ -1,0 +1,3 @@
+set_gdm_background.py:
+  * manejar errores al leer/escribir archivos (imágenes, configuración)
+  * chequear si se es root al inicializar
