@@ -1,3 +1,4 @@
 set_gdm_background.py:
   * manejar errores al leer/escribir archivos (imágenes, configuración)
   * chequear si se es root al inicializar
+  * permitir escalado de la ventna, manteniendo el aspect ratio de la imagen
