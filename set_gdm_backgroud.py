@@ -32,7 +32,7 @@ if gtk.pygtk_version < (2,3,90):
 
 class App:
    path = None
-   disp = "stretched"
+   disp = None
    conffile = "/etc/gdm3/greeter.gconf-defaults"
    image = gtk.Image()
    screenw = -1
@@ -224,6 +224,12 @@ class App:
          self.path = widget.get_filename()
          self.redraw()
 
+   # this is called when a file is d'n'd-ed into the file selection button
+   def button_path_changed( self, widget ):
+
+      self.path = widget.get_filename()
+      self.redraw()
+
    # current disposition option changed callback. should redraw
    def disp_changed( self, widget):
       self.disp = widget.get_active_text()
@@ -264,8 +270,9 @@ class App:
                                                gtk.FILE_CHOOSER_ACTION_OPEN,
                                                (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
                                                 gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
-      self.filebutton = gtk.FileChooserButton(self.filedialog)
+      self.filebutton = gtk.FileChooserButton(self.filedialog) 
       self.filedialog.connect( "response", self.path_changed)
+      self.filebutton.connect( "selection-changed", self.button_path_changed)
 
       # disposition selection combo
       self.combo = gtk.combo_box_new_text()
