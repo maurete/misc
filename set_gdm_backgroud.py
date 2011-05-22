@@ -25,6 +25,8 @@ import gtk
 import commands
 import os
 
+import ConfigParser
+
 # Check for new pygtk: this is new class in PyGtk 2.4
 if gtk.pygtk_version < (2,3,90):
    print "PyGtk 2.3.90 or later required for this example"
@@ -33,10 +35,11 @@ if gtk.pygtk_version < (2,3,90):
 class App:
    path = None
    disp = None
-   conffile = "/etc/gdm3/greeter.gconf-defaults"
+   conffile = "/etc/gdm3/greeter.gsettings"
    image = gtk.Image()
    screenw = -1
    screenh = -1
+   config = ConfigParser.RawConfigParser()
 
    # redraw the screen thumbnail with currently selected file and disposition
    def redraw(self):
@@ -155,54 +158,25 @@ class App:
    # read GDM3 configuration file, and set correspondig variables
    def read_config( self ):
 
-      with open( self.conffile, 'r') as conf:
+      self.config.read(self.conffile)
 
-         for line in conf:
-            m1 = re.match(r"^\s*/desktop/gnome/background/picture_filename\s+(\S.*)$", line)
-            m2 = re.match(r"^\s*/desktop/gnome/background/picture_options\s+(\w+)", line)
+      _uri = self.config.get( 'org.gnome.desktop.background', 'picture-uri' )
+      _opt = self.config.get( 'org.gnome.desktop.background', 'picture-options' )
 
-            if m1:
-               if os.path.isfile( m1.group(1)):
-                  print "Image file option read: " + m1.group(1)
-                  self.path = m1.group(1)
-               else:
-                  print "Image file not found"
-                  self.path = None
+      self.path = _uri[8:-1]
+      self.disp = _opt[1:-1]
 
-            elif m2:
-               print "Image disposition option read: " + m2.group(1)
-               self.disp = m2.group(1)
+      print "Image file option read: " + self.path
+      print "Image disposition option read: " + self.disp
 
    # save GDM3 options file, replacing the options with the current ones
    def save_config( self, widget=None ):
       
-      with open(self.conffile, 'r') as conf:
-         out = ""
+      self.config.set( 'org.gnome.desktop.background', 'picture-uri', '\'file://'+self.path+'\'' )
+      self.config.set( 'org.gnome.desktop.background', 'picture-options', '\''+self.disp+'\'' )
 
-         for line in conf:
-            m1 = re.match(r"^\s*/desktop/gnome/background/picture_filename", line)
-            m2 = re.match(r"^\s*/desktop/gnome/background/picture_options", line)
-
-            # if the current line matchs the picture_filename option, replace
-            # it with a new one containing the current value of path
-            if m1:
-               out += "/desktop/gnome/background/picture_filename      " \
-                   + self.path + "\n"
-
-            # else if it macthes the picture_options option, put the
-            # value of disp instead
-            elif m2:
-               out += "/desktop/gnome/background/picture_options       "\
-                   + self.disp + "\n"
-
-            # else copy the line as-is
-            else:
-               out += line
-
-         # save the file putting in there the value of out
-         with open(self.conffile, 'w') as f:
-            f.write(out)
-            print "Configuration file saved."
+      with open( self.conffile, 'wb') as configfile:
+         self.config.write(configfile)
 
    # close event. don't know if or what it should do
    def close(self, widget, event, data=None):
